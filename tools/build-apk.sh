@@ -12,7 +12,7 @@ CLASSES=$(find "$W/classes" -name '*.class')
 [ -n "$CLASSES" ] || { echo "ECHEC javac"; exit 1; }
 if find "$W/classes" -name '*$[0-9]*.class' | grep -q .; then echo "ECHEC : classe anonyme interdite (d8)"; find "$W/classes" -name '*$[0-9]*.class'; exit 1; fi
 # shellcheck disable=SC2086
-"$SDK_BT/d8" --min-api 26 --lib "$ANDROID_JAR" --output "$W" $CLASSES 2>&1 | grep -vE 'JAVA_TOOL_OPTIONS|_JAVA_OPTIONS' || true
+"$SDK_BT/d8" --release --min-api 26 --lib "$ANDROID_JAR" --output "$W" $CLASSES 2>&1 | grep -vE 'JAVA_TOOL_OPTIONS|_JAVA_OPTIONS' || true
 [ -f "$W/classes.dex" ] || { echo "ECHEC d8"; exit 1; }
 "$SDK_BT/aapt2" link -I "$ANDROID_JAR" --manifest "$APP/AndroidManifest.xml" -o "$W/base.apk"
 cp "$W/base.apk" "$W/work.apk"; (cd "$W" && zip -q work.apk classes.dex)

@@ -9,6 +9,8 @@ package com.hy.home;
 public final class KioskScript {
   static final String WEATHER = "weather.ideaux4";
   static final String TEMPERATURE = "sensor.ideaux4_temperature";
+  /** En dessous, le texte devient illisible au projecteur : on laisse alors défiler. */
+  static final double MIN_ZOOM = 0.6;
 
   private KioskScript() {}
 
@@ -39,7 +41,21 @@ public final class KioskScript {
       // (c) couleurs du launcher et zoom
       "function theme(){var r=document.documentElement;r.style.setProperty('--primary-background-color','#0a0e1d');",
       "r.style.setProperty('--lovelace-background','#0a0e1d');r.style.setProperty('--card-background-color','#151c35');",
-      "r.style.setProperty('--ha-card-background','#151c35');r.style.zoom='" + zoom + "';}",
+      "r.style.setProperty('--ha-card-background','#151c35');}",
+      // (c') tout tient à l'écran : zoom réduit jusqu'à ce que la vue ne déborde plus (borné à ZMIN)
+      "var ZMAX=" + zoom + ",ZMIN=" + MIN_ZOOM + ",z=ZMAX,fitT=[];",
+      "try{var sb=document.createElement('style');sb.textContent='::-webkit-scrollbar{display:none;width:0;height:0}';document.head.appendChild(sb);}catch(e){}",
+      "function scroller(){var c=[document.scrollingElement],hr=deep(document,'hui-root',0);",
+      "if(hr&&hr.shadowRoot){var v=hr.shadowRoot.getElementById('view');if(v)c.push(v);",
+      "if(!hr.shadowRoot.getElementById('hy-sb')){var s2=document.createElement('style');s2.id='hy-sb';s2.textContent='::-webkit-scrollbar{display:none;width:0;height:0}';hr.shadowRoot.appendChild(s2);}}",
+      "var best=null,ov=0;for(var i=0;i<c.length;i++){var e=c[i];if(e&&e.clientHeight>0){var q=e.scrollHeight/e.clientHeight;if(q>ov){ov=q;best=e;}}}return best;}",
+      "function apply(){document.documentElement.style.zoom=String(z);}",
+      "function fit(n){var e=scroller();if(!e)return;var q=e.scrollHeight/e.clientHeight;",
+      "if(q>1.01&&z>ZMIN&&n<6){z=Math.max(ZMIN,Math.floor(z/q*0.99*100)/100);apply();fitT.push(setTimeout(function(){fit(n+1);},400));}",
+      "else log('fit z='+z+' q='+q.toFixed(2));}",
+      "function refit(){for(var i=0;i<fitT.length;i++)clearTimeout(fitT[i]);fitT=[];z=ZMAX;apply();",
+      "fitT.push(setTimeout(function(){fit(0);},700));fitT.push(setTimeout(function(){fit(0);},2500));fitT.push(setTimeout(function(){fit(0);},6000));}",
+      "window.addEventListener('location-changed',refit);window.addEventListener('resize',refit);refit();",
       // (d) API appelée par l'app
       "function hass(){var ha=document.querySelector('home-assistant');return ha&&ha.hass?ha.hass:null;}",
       "window.__hy={",
