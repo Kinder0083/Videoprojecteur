@@ -1,0 +1,121 @@
+{
+  "views": [
+    {
+      "title": "Accueil",
+      "path": "accueil",
+      "type": "sections",
+      "max_columns": 2,
+      "sections": [
+        {
+          "type": "grid",
+          "cards": [
+            {
+              "type": "custom:energy-flow-card",
+              "solar_entity": "sensor.infinisolar_v_x_2_pv_power",
+              "grid_entity": "sensor.infinisolar_v_x_2_grid_power",
+              "solar_name": "Solaire",
+              "grid_name": "Réseau EDF",
+              "solar_max": 6000,
+              "grid_max": 4000,
+              "grid_options": {"columns": 12, "rows": 4},
+              "temperature_entity": "sensor.ideaux4_temperature",
+              "humidity_entity": "sensor.ideaux4_relative_humidity",
+              "wind_speed_entity": "sensor.ideaux4_wind_speed",
+              "wind_direction_entity": "sensor.ideaux4_wind_direction_degrees",
+              "rain_today_entity": "sensor.ideaux4_precipitation_today",
+              "rain_rate_entity": "sensor.ideaux4_precipitation_rate",
+              "uv_entity": "sensor.ideaux4_uv_index",
+              "weather_entity": "weather.ideaux4",
+              "battery_soc_entity": "sensor.infinisolar_v_x_2_battery_state_of_charge",
+              "battery_power_entity": "sensor.infinisolar_v_x_2_battery_power",
+              "battery_rate_entity": "sensor.infinisolar_v_x_2_batterie_vitesse_de_charge",
+              "battery_max": 5000
+            }
+          ]
+        },
+        {
+          "type": "grid",
+          "cards": [
+            {
+              "type": "markdown",
+              "content": "{% set lum = ['switch.x8r_ndeg0_relais_2','switch.x8r_ndeg0_relais_3','switch.x8r_ndeg1_relais_8','switch.x8r_ndeg2_relais_5','switch.x8r_ndeg1_relais_7','switch.x8r_ndeg0_relais_4','switch.ipx800_v5_ipx_ndeg0_relais_8','switch.x8r_ndeg2_relais_2','switch.ipx800_v5_ipx_ndeg0_relais_4','switch.x8r_ndeg2_relais_1','switch.ipx800_v5_ipx_ndeg0_relais_2','switch.ipx800_v5_ipx_ndeg0_relais_3','switch.x8r_ndeg2_relais_3','switch.x8r_ndeg2_relais_7','switch.x8r_ndeg2_relais_4','switch.x8r_ndeg2_relais_8','switch.ipx800_v5_ipx_ndeg0_relais_6','switch.x8r_ndeg0_relais_5','switch.x8r_ndeg0_relais_6','switch.x8r_ndeg0_relais_1','switch.ipx800_v5_ipx_ndeg0_relais_1','switch.x8r_ndeg0_relais_7','switch.ipx800_v5_ipx_ndeg0_relais_7','switch.x8r_ndeg1_relais_5','switch.x8r_ndeg1_relais_6'] %}{% set on = lum | select('is_state','on') | map('state_attr','friendly_name') | list %}{% set vo = states.cover | selectattr('state','eq','open') | map(attribute='name') | list %}{% set fe = states.binary_sensor | selectattr('entity_id','search','capteurs_fenetre') | selectattr('state','eq','on') | map(attribute='name') | list %}💡 **{{ on | count }} lumière(s) allumée(s)**{% if on %} : {{ on | map('replace','Lum ','') | join(', ') }}{% endif %}\n\n🪟 **{{ vo | count }} volet(s) ouvert(s)**{% if vo %} : {{ vo | map('replace','Volet ','') | join(', ') }}{% endif %}\n\n🌡️ **Mode : {{ {'heat':'Chauffage','cool':'Climatisation','stop':'Arrêt','fan':'Ventilation','dry':'Déshumidification'}[states('select.sejour_mode')] | default(states('select.sejour_mode')) }}**\n\n{% if fe %}⚠️ **Ouvert : {{ fe | map('replace','Capteurs Fenêtre ','') | join(', ') }}**{% else %}✅ Fenêtres et portes fermées{% endif %}"
+            },
+            {
+              "type": "shortcut",
+              "color": "deep-orange",
+              "grid_options": {"columns": 4},
+              "icon": "mdi:fire",
+              "label": "Chauffage",
+              "tap_action": {"action": "perform-action", "confirmation": {"text": "Passer toute la maison en CHAUFFAGE ?"}, "data": {"option": "heat"}, "perform_action": "select.select_option", "target": {"entity_id": "select.sejour_mode"}}
+            },
+            {
+              "type": "shortcut",
+              "color": "blue",
+              "grid_options": {"columns": 4},
+              "icon": "mdi:snowflake",
+              "label": "Clim",
+              "tap_action": {"action": "perform-action", "confirmation": {"text": "Passer toute la maison en CLIMATISATION ?"}, "data": {"option": "cool"}, "perform_action": "select.select_option", "target": {"entity_id": "select.sejour_mode"}}
+            },
+            {
+              "type": "shortcut",
+              "color": "grey",
+              "grid_options": {"columns": 4},
+              "icon": "mdi:power",
+              "label": "Arrêt",
+              "tap_action": {"action": "perform-action", "confirmation": {"text": "Arrêter le chauffage / la clim de toute la maison ?"}, "data": {"option": "stop"}, "perform_action": "select.select_option", "target": {"entity_id": "select.sejour_mode"}}
+            },
+            {
+              "type": "shortcut",
+              "color": "green",
+              "grid_options": {"columns": 4},
+              "icon": "mdi:arrow-up-bold",
+              "label": "Ouvrir volets",
+              "tap_action": {"action": "perform-action", "confirmation": {"text": "Ouvrir tous les volets ?"}, "perform_action": "cover.open_cover", "target": {"entity_id": ["cover.x4vr_ndeg0_vr_1", "cover.x4vr_ndeg0_vr_2", "cover.x4vr_ndeg0_vr_3", "cover.x4vr_ndeg0_vr_4", "cover.x4vr_ndeg1_vr_1", "cover.x4vr_ndeg1_vr_2", "cover.x4vr_ndeg1_vr_3", "cover.x4vr_ndeg1_vr_4"]}}
+            },
+            {
+              "type": "shortcut",
+              "color": "indigo",
+              "grid_options": {"columns": 4},
+              "icon": "mdi:arrow-down-bold",
+              "label": "Fermer volets",
+              "tap_action": {"action": "perform-action", "confirmation": {"text": "Fermer tous les volets ?"}, "perform_action": "cover.close_cover", "target": {"entity_id": ["cover.x4vr_ndeg0_vr_1", "cover.x4vr_ndeg0_vr_2", "cover.x4vr_ndeg0_vr_3", "cover.x4vr_ndeg0_vr_4", "cover.x4vr_ndeg1_vr_1", "cover.x4vr_ndeg1_vr_2", "cover.x4vr_ndeg1_vr_3", "cover.x4vr_ndeg1_vr_4"]}}
+            },
+            {
+              "type": "shortcut",
+              "color": "amber",
+              "grid_options": {"columns": 4},
+              "icon": "mdi:lightbulb-group-off",
+              "label": "Tout éteindre",
+              "tap_action": {"action": "perform-action", "confirmation": {"text": "Éteindre toutes les lumières (sauf couloir bas) ?"}, "perform_action": "switch.turn_off", "target": {"entity_id": ["switch.x8r_ndeg0_relais_2", "switch.x8r_ndeg0_relais_3", "switch.x8r_ndeg1_relais_8", "switch.x8r_ndeg2_relais_5", "switch.x8r_ndeg1_relais_7", "switch.x8r_ndeg0_relais_4", "switch.x8r_ndeg2_relais_2", "switch.ipx800_v5_ipx_ndeg0_relais_4", "switch.x8r_ndeg2_relais_1", "switch.ipx800_v5_ipx_ndeg0_relais_2", "switch.ipx800_v5_ipx_ndeg0_relais_3", "switch.x8r_ndeg2_relais_3", "switch.x8r_ndeg2_relais_7", "switch.x8r_ndeg2_relais_4", "switch.x8r_ndeg2_relais_8", "switch.ipx800_v5_ipx_ndeg0_relais_6", "switch.x8r_ndeg0_relais_5", "switch.x8r_ndeg0_relais_6", "switch.x8r_ndeg0_relais_1", "switch.ipx800_v5_ipx_ndeg0_relais_1", "switch.x8r_ndeg0_relais_7", "switch.ipx800_v5_ipx_ndeg0_relais_7", "switch.x8r_ndeg1_relais_5", "switch.x8r_ndeg1_relais_6"]}}
+            },
+            {
+              "type": "tile",
+              "entity": "climate.sejour",
+              "name": "Séjour",
+              "features": [{"type": "target-temperature"}],
+              "grid_options": {"columns": 12},
+              "icon_tap_action": {"action": "toggle"}
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Caméras",
+      "path": "cameras",
+      "type": "sections",
+      "max_columns": 2,
+      "sections": [
+        {
+          "type": "grid",
+          "column_span": 2,
+          "cards": [
+            {"type": "picture-entity", "entity": "camera.ouest", "name": "Ouest", "camera_view": "auto", "show_state": false, "tap_action": {"action": "more-info"}, "grid_options": {"columns": 12}},
+            {"type": "picture-entity", "entity": "camera.salon", "name": "Salon", "camera_view": "auto", "show_state": false, "tap_action": {"action": "more-info"}, "grid_options": {"columns": 6}},
+            {"type": "picture-entity", "entity": "camera.sud", "name": "Sud", "camera_view": "auto", "show_state": false, "tap_action": {"action": "more-info"}, "grid_options": {"columns": 6}}
+          ]
+        }
+      ]
+    }
+  ]
+}
