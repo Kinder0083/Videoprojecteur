@@ -62,4 +62,21 @@ public final class DockModel {
     for (String p : pkgs) if (installed.contains(p)) r.add(p);
     return r;
   }
+
+  /** Ni le launcher Maison ni l'accueil d'origine ne s'épinglent. */
+  static final String[] NEVER = {"com.hy.home", "com.htc.magcubicos"};
+
+  /** Les 4 applis fixes ne se retirent pas. */
+  public static boolean removable(String pkg) { return !isDefault(pkg); }
+
+  /** Applis proposées par « + Ajouter » : lançables, absentes de la barre, triées par paquet. */
+  public static List<String> addable(List<String> launchables, List<String> dock) {
+    List<String> r = new ArrayList<String>();
+    for (String p : launchables) {
+      if (dock.contains(p) || r.contains(p) || Arrays.asList(NEVER).contains(p)) continue;
+      r.add(p);
+    }
+    java.util.Collections.sort(r);
+    return r;
+  }
 }

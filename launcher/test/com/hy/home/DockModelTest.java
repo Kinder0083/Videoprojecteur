@@ -32,5 +32,14 @@ public final class DockModelTest {
         DockModel.label(d.get(0)) + "|" + DockModel.label(d.get(1)) + "|" + DockModel.label(d.get(2)) + "|" + DockModel.label(d.get(3)));
     T.eq("libellé inconnu", null, DockModel.label("org.videolan.vlc"));
     T.eq("défauts exposés", d, Arrays.asList(DockModel.DEFAULTS));
-  }
+      // « + Ajouter » : applis lançables absentes de la barre, sans le launcher lui-même ni l'accueil d'origine, triées
+    java.util.List<String> launchables = Arrays.asList("org.videolan.vlc", "com.netflix.mediaclient", "com.hy.home",
+        "com.htc.magcubicos", "com.google.android.youtube.tv", "com.spotify.tv.android");
+    java.util.List<String> dock = DockModel.packages("com.spotify.tv.android");
+    T.eq("ajoutables", Arrays.asList("com.google.android.youtube.tv", "org.videolan.vlc"),
+        DockModel.addable(launchables, dock));
+    T.eq("ajoutables vide", new java.util.ArrayList<String>(), DockModel.addable(new java.util.ArrayList<String>(), dock));
+    T.ok("défaut non retirable", !DockModel.removable("com.netflix.mediaclient"));
+    T.ok("épinglé retirable", DockModel.removable("org.videolan.vlc"));
+}
 }

@@ -36,7 +36,7 @@ public final class KioskScript {
       "st.textContent='.header{display:none!important}#view,hui-view-container{padding-top:0!important;margin-top:0!important;min-height:100vh!important}';",
       "hr.shadowRoot.appendChild(st);}hr.style.setProperty('--header-height','0px');return true;}",
       "var tries=0,timer=null;function retry(){tries=0;if(timer)clearInterval(timer);",
-      "timer=setInterval(function(){tries++;if(hideHeader()){clearInterval(timer);log('kiosk:ok');}else if(tries>=40){clearInterval(timer);}},500);}",
+      "timer=setInterval(function(){tries++;if(hideHeader()){clearInterval(timer);log('kiosk:ok');refit();}else if(tries>=40){clearInterval(timer);}},500);}",
       "window.addEventListener('location-changed',retry);retry();",
       // (c) couleurs du launcher et zoom
       "function theme(){var r=document.documentElement;r.style.setProperty('--primary-background-color','#0a0e1d');",

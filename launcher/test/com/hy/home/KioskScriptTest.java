@@ -19,5 +19,6 @@ public final class KioskScriptTest {
     T.ok("ajusté après navigation", js.contains("addEventListener('location-changed',refit)"));
     T.ok("ajusté au redimensionnement", js.contains("addEventListener('resize',refit)"));
     T.ok("journal fit", js.contains("log('fit "));
+    T.ok("réajusté après masquage de l'en-tête", js.contains("log('kiosk:ok');refit();"));
   }
 }

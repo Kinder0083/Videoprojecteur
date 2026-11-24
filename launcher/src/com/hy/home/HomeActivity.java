@@ -22,7 +22,17 @@ import android.webkit.CookieManager;
 import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
+import android.app.AlertDialog;
+import android.content.SharedPreferences.Editor;
+import android.graphics.drawable.Drawable;
+import android.text.SpannableString;
+import android.text.Spanned;
+import android.text.style.ForegroundColorSpan;
+import android.view.KeyEvent;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
+import java.util.ArrayList;
+import java.util.List;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
@@ -60,6 +70,16 @@ public class HomeActivity extends Activity {
   TextView overlay;
   String base;
   int currentTab = Tabs.HOME;
+  static final String ORIGIN_BUTTON = "input_button.projecteur_accueil_origine";
+  static final int PINK = 0xFFFF8FB1;
+  static final long ORIGIN_TIMEOUT_MS = 8000;
+  static final int DIALOG_THEME = android.R.style.Theme_Material_Dialog_Alert;
+  final UiActions.OriginTimeout originTimeout = new UiActions.OriginTimeout(this);
+  final int webId = View.generateViewId();
+  final FocusDock focusDock = new FocusDock(this);
+  boolean haConnected = false;
+  boolean pendingOrigin = false;
+  View firstTile;
   boolean pageReady = false;
   boolean loadFailed = false;
 
@@ -97,6 +117,8 @@ public class HomeActivity extends Activity {
 
   @Override protected void onResume() {
     super.onResume();
+    buildDock();
+    ui.post(focusDock); // la télécommande arrive sur Netflix (après la mise en page)
     ui.removeCallbacks(clock);
     clock.run();
   }
@@ -249,6 +271,7 @@ public class HomeActivity extends Activity {
 
   @Override public void onBackPressed() {
     if (web != null && web.canGoBack()) web.goBack(); // un écran d'accueil ne se ferme pas
+    else focusFirstTile(); // sinon, retour sur la barre d'applis
   }
 
   SharedPreferences prefs() { return getSharedPreferences(PREFS, MODE_PRIVATE); }
@@ -268,6 +291,7 @@ public class HomeActivity extends Activity {
 
   void createWebView() {
     web = new WebView(this);
+    web.setId(webId);
     WebSettings s = web.getSettings();
     s.setJavaScriptEnabled(true);
     s.setDomStorageEnabled(true);
@@ -325,6 +349,7 @@ public class HomeActivity extends Activity {
     pageReady = false;
     Log.w(TAG, "chargement impossible : " + what);
     setConnected(BAD, "Hors ligne");
+    haConnected = false;
     wxChip.setVisibility(View.GONE);
     showOverlay("Connexion à la maison…\n\nHome Assistant ne répond pas. Nouvel essai dans 15 s.");
     ui.removeCallbacks(retry);
@@ -347,10 +372,191 @@ public class HomeActivity extends Activity {
     wxChip.setText(c);
     wxChip.setVisibility(c.isEmpty() ? View.GONE : View.VISIBLE);
     boolean ok = StatusParser.connected(payload);
+    haConnected = ok;
     setConnected(ok ? OK : BAD, ok ? "Maison connectée" : "Hors ligne");
   }
 
-  void onPress(String entityId, boolean ok) { Log.i(TAG, "appui " + entityId + " → " + ok); }
+  void onPress(String entityId, boolean ok) {
+    Log.i(TAG, "appui " + entityId + " → " + ok);
+    if (!pendingOrigin || !ORIGIN_BUTTON.equals(entityId)) return;
+    pendingOrigin = false;
+    ui.removeCallbacks(originTimeout);
+    if (ok) AppLauncher.openOriginHome(this); // l'automatisation HA rétablit aussi l'accueil par défaut
+    else originFallback("appui refusé par HA");
+  }
+
+  // --- barre d'applis ---
+
+  /** Barre centrée en bas : applis visibles, puis « + Ajouter » et « Réglages ». Reconstruite à chaque retour. */
+  void buildDock() {
+    dock.removeAllViews();
+    dock.setPadding(0, Math.round(s(6)), 0, Math.round(s(14)));
+    firstTile = null;
+    List<String> pkgs = DockModel.visible(DockModel.packages(prefs().getString(KEY_PINS, "")), AppLauncher.launchableSet(this));
+    for (String p : pkgs) {
+      Drawable banner = AppLauncher.banner(this, p);
+      View t = tile(AppLauncher.label(this, p), banner != null ? banner : AppLauncher.icon(this, p), banner != null, null);
+      t.setOnClickListener(new UiActions.TileClick(this, UiActions.APP, p));
+      if (DockModel.removable(p)) t.setOnLongClickListener(new UiActions.TileLongClick(this, p));
+      addTile(t);
+    }
+    View add = tile("Ajouter", null, false, "+");
+    add.setOnClickListener(new UiActions.TileClick(this, UiActions.ADD, null));
+    addTile(add);
+    View set = tile("Réglages", null, false, "⚙");
+    set.setOnClickListener(new UiActions.TileClick(this, UiActions.SETTINGS, null));
+    addTile(set);
+  }
+
+  void addTile(View t) {
+    t.setNextFocusUpId(webId);
+    LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+    lp.leftMargin = lp.rightMargin = Math.round(s(5));
+    dock.addView(t, lp);
+    if (firstTile == null) firstTile = t;
+  }
+
+  /** Tuile : bannière 16:9 ou icône carrée (ou un symbole), libellé dessous, cadre cyan au focus. */
+  View tile(String label, Drawable img, boolean wide, String glyph) {
+    LinearLayout col = new LinearLayout(this);
+    col.setOrientation(LinearLayout.VERTICAL);
+    col.setGravity(Gravity.CENTER_HORIZONTAL);
+    int p = Math.round(s(6));
+    col.setPadding(p, p, p, Math.round(s(4)));
+    col.setFocusable(true);
+    col.setClickable(true);
+    StateListDrawable bg = new StateListDrawable();
+    bg.addState(new int[] {android.R.attr.state_focused}, pill(GLASS2, RING, s(2.5f), s(16)));
+    bg.addState(new int[0], pill(Color.TRANSPARENT, 0, 0, s(16)));
+    col.setBackground(bg);
+    int h = Math.round(s(58));
+    int w = wide ? Math.round(s(103)) : h;
+    View box;
+    if (glyph != null) {
+      TextView g = text(26, DIM, false);
+      g.setText(glyph);
+      g.setGravity(Gravity.CENTER);
+      g.setBackground("+".equals(glyph) ? pill(Color.TRANSPARENT, LINE, s(2), s(16)) : pill(GLASS2, 0, 0, s(16)));
+      box = g;
+    } else {
+      ImageView iv = new ImageView(this);
+      iv.setScaleType(ImageView.ScaleType.FIT_CENTER);
+      if (img != null) iv.setImageDrawable(img);
+      iv.setBackground(pill(CARD, 0, 0, s(14)));
+      iv.setClipToOutline(true);
+      box = iv;
+    }
+    col.addView(box, new LinearLayout.LayoutParams(w, h));
+    TextView name = text(12, DIM, true);
+    name.setText(label);
+    name.setGravity(Gravity.CENTER);
+    LinearLayout.LayoutParams nl = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+    nl.topMargin = Math.round(s(5));
+    col.addView(name, nl);
+    return col;
+  }
+
+  void launchApp(String pkg) {
+    if (!AppLauncher.launch(this, pkg)) buildDock(); // appli disparue entre-temps
+  }
+
+  void showAddDialog() {
+    List<String> pkgs = DockModel.addable(AppLauncher.installedLaunchables(this), DockModel.packages(prefs().getString(KEY_PINS, "")));
+    AlertDialog.Builder b = new AlertDialog.Builder(this, DIALOG_THEME).setTitle("Ajouter une appli à la barre");
+    if (pkgs.isEmpty()) b.setMessage("Aucune autre appli à ajouter.").setPositiveButton("OK", null);
+    else {
+      String[] labels = new String[pkgs.size()];
+      for (int i = 0; i < labels.length; i++) labels[i] = AppLauncher.label(this, pkgs.get(i));
+      b.setItems(labels, new UiActions.AddPick(this, pkgs)).setNegativeButton("Annuler", null);
+    }
+    b.show();
+  }
+
+  void pin(String pkg) {
+    prefs().edit().putString(KEY_PINS, DockModel.addPin(prefs().getString(KEY_PINS, ""), pkg)).apply();
+    buildDock();
+  }
+
+  void confirmRemove(String pkg) {
+    new AlertDialog.Builder(this, DIALOG_THEME)
+        .setTitle("Retirer " + AppLauncher.label(this, pkg) + " de la barre ?")
+        .setPositiveButton("Retirer", new UiActions.RemoveConfirm(this, pkg))
+        .setNegativeButton("Annuler", null).show();
+  }
+
+  void unpin(String pkg) {
+    prefs().edit().putString(KEY_PINS, DockModel.removePin(prefs().getString(KEY_PINS, ""), pkg)).apply();
+    buildDock();
+  }
+
+  // --- menu Réglages ---
+
+  void showSettingsMenu() {
+    SpannableString origin = new SpannableString("Revenir à l'accueil d'origine");
+    origin.setSpan(new ForegroundColorSpan(PINK), 0, origin.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+    CharSequence[] items = {"Recharger l'écran Maison", "Réglages du projecteur (netteté, trapèze, luminosité)",
+        "Paramètres Android", origin};
+    new AlertDialog.Builder(this, DIALOG_THEME).setTitle("Réglages")
+        .setItems(items, new UiActions.MenuPick(this)).show();
+  }
+
+  void onMenu(int which) {
+    if (which == 0) reloadHome();
+    else if (which == 1) navigate(Tabs.PROJECTOR_SETTINGS_PATH);
+    else if (which == 2) AppLauncher.openAndroidSettings(this);
+    else new AlertDialog.Builder(this, DIALOG_THEME)
+        .setTitle("Revenir à l'accueil d'origine du projecteur ?")
+        .setMessage("Le launcher Maison reste installé et peut être rétabli.")
+        .setPositiveButton("Revenir", new UiActions.OriginConfirm(this))
+        .setNegativeButton("Annuler", null).show();
+  }
+
+  /** Par HA si la maison est connectée (l'automatisation rétablit l'accueil par défaut), sinon repli local. */
+  void goOrigin() {
+    if (haConnected && pageReady) {
+      pendingOrigin = true;
+      ui.removeCallbacks(originTimeout);
+      ui.postDelayed(originTimeout, ORIGIN_TIMEOUT_MS);
+      web.evaluateJavascript("window.__hy&&window.__hy.press('" + ORIGIN_BUTTON + "')", null);
+    } else originFallback("HA déconnecté");
+  }
+
+  /** Ouvre Magcubic puis l'écran « Appli d'accueil » pour le choisir par défaut. */
+  void originFallback(String why) {
+    pendingOrigin = false;
+    ui.removeCallbacks(originTimeout);
+    Log.i(TAG, "retour à l'origine en local : " + why);
+    AppLauncher.openOriginHome(this);
+    AppLauncher.openHomeSettings(this);
+  }
+
+  /** Sort du mode tactile et place le focus sur la première tuile : sans cela la télécommande ne sélectionne rien. */
+  void focusFirstTile() { if (firstTile != null) firstTile.requestFocusFromTouch(); }
+
+  /** Touche directionnelle alors que rien n'a le focus (projecteur resté en mode tactile) → barre d'applis. */
+  @Override public boolean dispatchKeyEvent(KeyEvent e) {
+    if (e.getAction() == KeyEvent.ACTION_DOWN && getCurrentFocus() == null && isDpad(e.getKeyCode())) {
+      focusFirstTile();
+      return true;
+    }
+    return super.dispatchKeyEvent(e);
+  }
+
+  static boolean isDpad(int k) {
+    return k == KeyEvent.KEYCODE_DPAD_UP || k == KeyEvent.KEYCODE_DPAD_DOWN || k == KeyEvent.KEYCODE_DPAD_LEFT
+        || k == KeyEvent.KEYCODE_DPAD_RIGHT || k == KeyEvent.KEYCODE_DPAD_CENTER || k == KeyEvent.KEYCODE_ENTER;
+  }
+
+  static final class FocusDock implements Runnable {
+    final HomeActivity a;
+    FocusDock(HomeActivity a) { this.a = a; }
+    @Override public void run() { a.focusFirstTile(); }
+  }
+
+  @Override public boolean onKeyDown(int keyCode, KeyEvent e) {
+    if (keyCode == KeyEvent.KEYCODE_MENU) { showSettingsMenu(); return true; }
+    return super.onKeyDown(keyCode, e);
+  }
 
   /** Rafraîchit l'heure toutes les 30 s tant que l'accueil est visible. */
   static final class ClockTask implements Runnable {
