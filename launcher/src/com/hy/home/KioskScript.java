@@ -11,6 +11,12 @@ public final class KioskScript {
   static final String TEMPERATURE = "sensor.ideaux4_temperature";
   /** En dessous, le texte devient illisible au projecteur : on laisse alors défiler. */
   static final double MIN_ZOOM = 0.6;
+  /**
+   * Les animations en boucle (carte énergie : nuages, flux, pluie…) font redessiner la page
+   * ~40 fois/s et chauffer le projecteur. On les met en pause et on les avance par pas de
+   * CALM_MS : le mouvement reste visible, le rendu tombe à ~1 image/s.
+   */
+  static final int CALM_MS = 1000;
 
   private KioskScript() {}
 
@@ -56,6 +62,17 @@ public final class KioskScript {
       "function refit(){for(var i=0;i<fitT.length;i++)clearTimeout(fitT[i]);fitT=[];z=ZMAX;apply();",
       "fitT.push(setTimeout(function(){fit(0);},700));fitT.push(setTimeout(function(){fit(0);},2500));fitT.push(setTimeout(function(){fit(0);},6000));}",
       "window.addEventListener('location-changed',refit);window.addEventListener('resize',refit);refit();",
+      // (c'') animations infinies ralenties : pause + avance par pas (les transitions de l'UI HA ne sont pas touchées)
+      "var CALM=" + CALM_MS + ";var calmN=-1,calmK=0,R=[];",
+      // document.getAnimations() ne voit pas l'intérieur des shadow roots : on les collecte
+      "function roots(r,d,out){if(!r||d>14||!r.querySelectorAll)return;var all=r.querySelectorAll('*');",
+      "for(var i=0;i<all.length;i++){var s=all[i].shadowRoot;if(s){out.push(s);roots(s,d+1,out);}}}",
+      "function calm(){if(calmK%10===0){R=[document];roots(document,0,R);}calmK++;var n=0;",
+      "for(var k=0;k<R.length;k++){var l;try{l=R[k].getAnimations();}catch(e){continue;}",
+      "for(var i=0;i<l.length;i++){var a=l[i];try{var t=a.effect&&a.effect.getTiming?a.effect.getTiming():null;",
+      "if(!t||!(t.iterations===Infinity))continue;if(a.playState!=='paused')a.pause();a.currentTime=(a.currentTime||0)+CALM;n++;}catch(e){}}}",
+      "if(n!==calmN){calmN=n;log('calm n='+n+' racines='+R.length);}}",
+      "setInterval(calm,CALM);",
       // (d) API appelée par l'app
       "function hass(){var ha=document.querySelector('home-assistant');return ha&&ha.hass?ha.hass:null;}",
       "window.__hy={",

@@ -20,5 +20,14 @@ public final class KioskScriptTest {
     T.ok("ajusté au redimensionnement", js.contains("addEventListener('resize',refit)"));
     T.ok("journal fit", js.contains("log('fit "));
     T.ok("réajusté après masquage de l'en-tête", js.contains("log('kiosk:ok');refit();"));
+    // animations infinies (carte énergie) : pause + avance par pas, ~1 image/s au lieu de ~40
+    T.ok("pas d'animation 1 s", KioskScript.CALM_MS == 1000);
+    T.ok("animations listées par racine", js.contains("R[k].getAnimations()"));
+    T.ok("shadow roots parcourus", js.contains("function roots(") && js.contains("out.push(s)"));
+    T.ok("racines rafraîchies toutes les 10 pas", js.contains("calmK%10===0"));
+    T.ok("seulement les boucles infinies", js.contains("iterations===Infinity"));
+    T.ok("mise en pause", js.contains(".pause()"));
+    T.ok("avance par pas", js.contains("currentTime=(a.currentTime||0)+CALM"));
+    T.ok("cadence", js.contains("var CALM=" + KioskScript.CALM_MS + ";") && js.contains("setInterval(calm,CALM)"));
   }
 }
