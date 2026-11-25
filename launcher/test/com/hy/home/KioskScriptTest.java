@@ -21,7 +21,7 @@ public final class KioskScriptTest {
     T.ok("journal fit", js.contains("log('fit "));
     T.ok("réajusté après masquage de l'en-tête", js.contains("log('kiosk:ok');refit();"));
     // animations infinies (carte énergie) : pause + avance par pas, ~1 image/s au lieu de ~40
-    T.ok("pas d'animation 1 s", KioskScript.CALM_MS == 1000);
+    T.ok("pas d'animation 0,5 s", KioskScript.CALM_MS == 500);
     T.ok("animations listées par racine", js.contains("R[k].getAnimations()"));
     T.ok("shadow roots parcourus", js.contains("function roots(") && js.contains("out.push(s)"));
     T.ok("racines rafraîchies toutes les 10 pas", js.contains("calmK%10===0"));

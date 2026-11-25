@@ -52,3 +52,4 @@ Point 3 (launcher, commit 3b06600, APK dbfb895c installé) : WebView figée hors
 - Limite : jusqu'à 10 s d'animation pleine vitesse après chargement/navigation (avant le rescan des racines).
 - Mesure via HA : le lancement en arrière-plan (setsid nohup) est tué à la fin du shell adb → script court mes.sh lancé en avant-plan (<8 s), résultat lu ensuite dans adb_response.
 - Contrôle à +5 min (20:41) : CPU 54,6 °C, GPU 50,0 °C, luminosité 20, launcher au premier plan, ~1,3 i/s. Automatisation temporaire projecteur_test_chauffe_launcher_temporaire supprimée.
+- Demande utilisateur : animation plus fluide → CALM_MS=500 (2 pas/s). Test KioskScriptTest « pas d'animation 0,5 s » RED→GREEN, suite 91/91. APK 11c128057b90e16b installé 21:26.

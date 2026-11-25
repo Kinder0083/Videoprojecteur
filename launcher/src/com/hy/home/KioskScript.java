@@ -14,9 +14,9 @@ public final class KioskScript {
   /**
    * Les animations en boucle (carte énergie : nuages, flux, pluie…) font redessiner la page
    * ~40 fois/s et chauffer le projecteur. On les met en pause et on les avance par pas de
-   * CALM_MS : le mouvement reste visible, le rendu tombe à ~1 image/s.
+   * CALM_MS (2 pas/s) : le mouvement reste visible, le rendu tombe à ~2 images/s.
    */
-  static final int CALM_MS = 1000;
+  static final int CALM_MS = 500;
 
   private KioskScript() {}
 
