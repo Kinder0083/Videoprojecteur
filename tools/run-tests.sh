@@ -5,7 +5,7 @@ cd "$(dirname "$0")/.."
 OUT=build/test
 rm -rf "$OUT"; mkdir -p "$OUT"
 SRC=""
-for c in HomeConfig Tabs Greeting StatusParser DockModel KioskScript; do
+for c in HomeConfig Tabs Greeting StatusParser DockModel KioskScript IdlePolicy; do
   f=launcher/src/com/hy/home/$c.java
   [ -f "$f" ] && SRC="$SRC $f"
 done

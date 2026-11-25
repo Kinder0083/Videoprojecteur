@@ -28,6 +28,7 @@ import android.graphics.drawable.Drawable;
 import android.text.SpannableString;
 import android.text.Spanned;
 import android.text.style.ForegroundColorSpan;
+import android.os.SystemClock;
 import android.view.KeyEvent;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
@@ -78,6 +79,10 @@ public class HomeActivity extends Activity {
   final int webId = View.generateViewId();
   final FocusDock focusDock = new FocusDock(this);
   boolean haConnected = false;
+  boolean webPaused = false;
+  boolean sleeping = false;
+  long lastInputMs = 0;
+  TextView sleepView;
   boolean pendingOrigin = false;
   View firstTile;
   boolean pageReady = false;
@@ -107,6 +112,13 @@ public class HomeActivity extends Activity {
     overlay.setBackgroundColor(0xE60A0E1D);
     overlay.setPadding(80, 80, 80, 80);
     root.addView(overlay, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+    sleepView = new TextView(this);
+    sleepView.setTextColor(DIM);
+    sleepView.setTextSize(28f);
+    sleepView.setGravity(Gravity.CENTER);
+    sleepView.setBackgroundColor(0xFF000000);
+    sleepView.setVisibility(View.GONE);
+    root.addView(sleepView, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
     setContentView(root);
     scale = getResources().getDisplayMetrics().widthPixels / 1280f;
     buildTopBar();
@@ -119,13 +131,41 @@ public class HomeActivity extends Activity {
     super.onResume();
     buildDock();
     ui.post(focusDock); // la télécommande arrive sur Netflix (après la mise en page)
+    lastInputMs = SystemClock.uptimeMillis();
+    wake();
     ui.removeCallbacks(clock);
     clock.run();
   }
 
+  /** Hors écran (Netflix devant…) : la page HA est figée, plus aucun calcul ni rendu. */
   @Override protected void onPause() {
     super.onPause();
     ui.removeCallbacks(clock);
+    pauseWeb();
+  }
+
+  void pauseWeb() {
+    if (web != null && !webPaused) { web.onPause(); web.pauseTimers(); webPaused = true; Log.i(TAG, "page figée"); }
+  }
+
+  void resumeWeb() {
+    if (web != null && webPaused) { web.onResume(); web.resumeTimers(); webPaused = false; Log.i(TAG, "page relancée"); }
+  }
+
+  /** Veille de l'écran Maison : page figée et écran sombre avec l'heure, pour limiter la chauffe. */
+  void sleep() {
+    if (sleeping) return;
+    sleeping = true;
+    pauseWeb();
+    sleepView.setText(Greeting.clock(LocalTime.now()) + "\n\nÉcran Maison en veille\nAppuyez sur une touche");
+    sleepView.setVisibility(View.VISIBLE);
+    Log.i(TAG, "veille");
+  }
+
+  void wake() {
+    sleepView.setVisibility(View.GONE);
+    resumeWeb();
+    if (sleeping) { sleeping = false; Log.i(TAG, "réveil"); }
   }
 
   /** Taille de la maquette (écran de 1280 px de large) convertie en pixels réels. */
@@ -237,6 +277,8 @@ public class HomeActivity extends Activity {
 
   /** Salutation, date et heure. */
   void refreshClock() {
+    if (!sleeping && IdlePolicy.asleep(lastInputMs, SystemClock.uptimeMillis(), IdlePolicy.TIMEOUT_MS)) sleep();
+    if (sleeping) sleepView.setText(Greeting.clock(LocalTime.now()) + "\n\nÉcran Maison en veille\nAppuyez sur une touche");
     LocalTime now = LocalTime.now();
     helloView.setText(Greeting.hello(now));
     dateView.setText(capitalize(Greeting.date(LocalDate.now())));
@@ -292,6 +334,7 @@ public class HomeActivity extends Activity {
   void createWebView() {
     web = new WebView(this);
     web.setId(webId);
+    webPaused = false; // une WebView neuve tourne : si on était en veille, sleep()/onPause la refigeront
     WebSettings s = web.getSettings();
     s.setJavaScriptEnabled(true);
     s.setDomStorageEnabled(true);
@@ -535,6 +578,8 @@ public class HomeActivity extends Activity {
 
   /** Touche directionnelle alors que rien n'a le focus (projecteur resté en mode tactile) → barre d'applis. */
   @Override public boolean dispatchKeyEvent(KeyEvent e) {
+    lastInputMs = SystemClock.uptimeMillis();
+    if (sleeping) { if (e.getAction() == KeyEvent.ACTION_UP) wake(); return true; } // la touche qui réveille ne fait rien d'autre
     if (e.getAction() == KeyEvent.ACTION_DOWN && getCurrentFocus() == null && isDpad(e.getKeyCode())) {
       focusFirstTile();
       return true;

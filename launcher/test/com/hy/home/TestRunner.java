@@ -5,7 +5,7 @@ import java.lang.reflect.Method;
 /** Lance XxxTest.run() pour chaque classe de test présente ; code 1 si un test échoue. */
 public final class TestRunner {
   private static final String[] TESTS = {
-    "HomeConfigTest", "GreetingTest", "StatusParserTest", "DockModelTest", "KioskScriptTest"
+    "HomeConfigTest", "GreetingTest", "StatusParserTest", "DockModelTest", "KioskScriptTest", "IdlePolicyTest"
   };
 
   private TestRunner() {}
