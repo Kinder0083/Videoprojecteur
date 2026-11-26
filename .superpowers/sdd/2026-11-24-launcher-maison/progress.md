@@ -53,3 +53,11 @@ Point 3 (launcher, commit 3b06600, APK dbfb895c installé) : WebView figée hors
 - Mesure via HA : le lancement en arrière-plan (setsid nohup) est tué à la fin du shell adb → script court mes.sh lancé en avant-plan (<8 s), résultat lu ensuite dans adb_response.
 - Contrôle à +5 min (20:41) : CPU 54,6 °C, GPU 50,0 °C, luminosité 20, launcher au premier plan, ~1,3 i/s. Automatisation temporaire projecteur_test_chauffe_launcher_temporaire supprimée.
 - Demande utilisateur : animation plus fluide → CALM_MS=500 (2 pas/s). Test KioskScriptTest « pas d'animation 0,5 s » RED→GREEN, suite 91/91. APK 11c128057b90e16b installé 21:26.
+
+## Essai « carte redessinée » (piste A) — 26/11
+- Mesures app d'essai (WebView, carte réelle, données fictives) : orig 47 i/s ~208 % ; orig2 (photons+nuages) 50 i/s ~124 % ; lite2 (mêmes, composités) 67 i/s ~120 % ; static ~0.
+- À 12 i/s : orig2@12 ~41 %, lite2@12 ~39 %, orig@12 (carte complète) ~75 %. Coût dominé par la production/composition d'images plein écran, pas par le dessin.
+- Ruling: piste A abandonnée (gain ~5 % à fluidité égale) — on garde la carte et on règle CALM_MS=83 (12 pas/s) choisi par l'utilisateur — coût si faux : chauffe ~75 % de charge, à surveiller (repli prévu 8 pas/s si >62 °C).
+- Recherche des racines ciblée : seules les racines animées suivies, recherche complète /10 s, chaque seconde les 10 premières s et après navigation. Tests 95/95, vérifié dans Chromium.
+- Incident : relance du launcher (am start) à 09:33 pendant que l'utilisateur regardait Netflix → film probablement interrompu. Règle : vérifier topResumedActivity avant tout am start.
+- Observation : Netflix seul ~105 % CPU et ~70 °C (avec dex2oat de l'installation).
