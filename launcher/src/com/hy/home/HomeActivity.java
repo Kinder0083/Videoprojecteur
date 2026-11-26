@@ -2,6 +2,8 @@ package com.hy.home;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.net.ConnectivityManager;
+import android.net.Network;
 import android.content.SharedPreferences;
 import android.content.res.ColorStateList;
 import android.graphics.Color;
@@ -61,6 +63,8 @@ public class HomeActivity extends Activity {
   final Handler ui = new Handler(Looper.getMainLooper());
   final RetryTask retry = new RetryTask(this);
   final ClockTask clock = new ClockTask(this);
+  final NetWatch net = new NetWatch();
+  NetCallback netCb;
 
   float scale = 1f;
   TextView helloView, dateView, clockView, wxChip, netChip;
@@ -126,6 +130,40 @@ public class HomeActivity extends Activity {
     createWebView();
     readConfig(getIntent());
     reloadHome();
+    watchNetwork();
+  }
+
+  /** Wi-Fi perdu (veille) puis revenu : message en français puis rechargement immédiat. */
+  void watchNetwork() {
+    try {
+      ConnectivityManager cm = getSystemService(ConnectivityManager.class);
+      netCb = new NetCallback(this);
+      cm.registerDefaultNetworkCallback(netCb);
+    } catch (RuntimeException e) { Log.w(TAG, "suivi du réseau impossible : " + e); }
+  }
+
+  @Override protected void onDestroy() {
+    if (netCb != null) {
+      try { getSystemService(ConnectivityManager.class).unregisterNetworkCallback(netCb); } catch (RuntimeException e) { /* déjà retiré */ }
+    }
+    super.onDestroy();
+  }
+
+  static final String NET_TEXT = "Connexion au réseau…\n\nLe Wi-Fi du projecteur se reconnecte, cela peut prendre une minute.";
+
+  void onNetworkLost() {
+    Log.i(TAG, "réseau perdu");
+    ui.removeCallbacks(retry);
+    haConnected = false;
+    setConnected(BAD, "Hors ligne");
+    wxChip.setVisibility(View.GONE);
+    showOverlay(NET_TEXT);
+  }
+
+  void onNetworkBack() {
+    Log.i(TAG, "réseau revenu : rechargement");
+    ui.removeCallbacks(retry);
+    ui.postDelayed(retry, NetWatch.SETTLE_MS);
   }
 
   @Override protected void onResume() {
@@ -401,7 +439,7 @@ public class HomeActivity extends Activity {
     setConnected(BAD, "Hors ligne");
     haConnected = false;
     wxChip.setVisibility(View.GONE);
-    showOverlay("Connexion à la maison…\n\nHome Assistant ne répond pas. Nouvel essai dans 15 s.");
+    showOverlay(net.offline() ? NET_TEXT : "Connexion à la maison…\n\nHome Assistant ne répond pas. Nouvel essai dans 15 s.");
     ui.removeCallbacks(retry);
     ui.postDelayed(retry, RETRY_MS);
   }
@@ -630,6 +668,26 @@ public class HomeActivity extends Activity {
     final HomeActivity a; final int tab;
     TabClick(HomeActivity a, int tab) { this.a = a; this.tab = tab; }
     @Override public void onClick(View v) { a.showTab(tab); }
+  }
+
+  /** Suivi du réseau (fil binder) : renvoie les événements sur le fil UI. */
+  static final class NetCallback extends ConnectivityManager.NetworkCallback {
+    final HomeActivity a;
+    NetCallback(HomeActivity a) { this.a = a; }
+    @Override public void onLost(Network n) { a.net.lost(); a.ui.post(new NetLost(a)); }
+    @Override public void onAvailable(Network n) { if (a.net.available()) a.ui.post(new NetBack(a)); }
+  }
+
+  static final class NetLost implements Runnable {
+    final HomeActivity a;
+    NetLost(HomeActivity a) { this.a = a; }
+    @Override public void run() { a.onNetworkLost(); }
+  }
+
+  static final class NetBack implements Runnable {
+    final HomeActivity a;
+    NetBack(HomeActivity a) { this.a = a; }
+    @Override public void run() { a.onNetworkBack(); }
   }
 
   /** Relance automatique après une erreur de chargement. */
