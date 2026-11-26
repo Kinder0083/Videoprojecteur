@@ -68,3 +68,4 @@ Point 3 (launcher, commit 3b06600, APK dbfb895c installé) : WebView figée hors
 - Rafale à durée fixe : 10 s à partir de la première touche ; les touches suivantes ne la prolongent pas tant qu'elle n'est pas finie (demande utilisateur). Une fois figée, la carte n'est vérifiée qu'une fois par seconde (1 tick sur 12) au lieu de 12×/s. APK 0412aa598e28d0de installé. Tests 104/104.
 - Validé par l'utilisateur sur l'appareil : la carte se fige bien 10 s après la première touche.
 - Ruling : les 4 applis d'origine (Netflix, Prime Video, Disney+, USB) deviennent retirables à la demande de l'utilisateur — préférence « hidden » (CSV) distincte des épinglées ; « + Ajouter » les repropose et les remet à leur place d'origine — coût si faux : aucun (préférence locale, réversible). APK 55d3e2293833e3d7 installé, tests 112/112.
+- Validé sur l'appareil par l'utilisateur : retrait/remise des applis d'origine OK ; + Ajouter, appui long, Réglages OK.
