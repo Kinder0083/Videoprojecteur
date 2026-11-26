@@ -29,13 +29,15 @@ public final class KioskScriptTest {
     // rafale de 10 s à 12 i/s puis carte figée à mi-parcours
     T.ok("rafale de 10 s", KioskScript.BURST_MS == 10000 && js.contains("var BURST=10000;"));
     T.ok("rafale appelable par l'app", js.contains("burst:function(ms){burst(ms);}"));
+    T.ok("rafale non prolongée", js.contains("function burst(ms){var n=Date.now();if(n<animUntil)return;"));
+    T.ok("carte figée : vérification une fois par seconde", js.contains("if(!on&&calmK%12!==0){calmK++;return;}"));
     T.ok("appel de rafale côté app", KioskScript.BURST_CALL.equals("window.__hy&&window.__hy.burst&&window.__hy.burst(10000)"));
     T.ok("rafale au chargement", js.contains("log('kiosk:ok');refit();burst();"));
     T.ok("figée à mi-parcours", js.contains("a.currentTime=snap(t)") && js.contains("0.5*d"));
     T.ok("recherche limitée à la carte énergie", js.contains("deep(document,'energy-flow-card',0)"));
     T.ok("blocages mesurés", js.contains("PerformanceObserver") && js.contains("'longtask'"));
     T.ok("recherche rapprochée au démarrage", js.contains("(calmK<SCAN&&calmK%12===0)"));
-    T.ok("recherche relancée après navigation", js.contains("addEventListener('location-changed',function(){calmK=0;animUntil="));
+    T.ok("recherche relancée après navigation", js.contains("addEventListener('location-changed',function(){calmK=0;burst();})"));
     T.ok("seules les racines animées sont suivies", js.contains("if(inf(l[i])){R.push(all[k]);break;}"));
     T.ok("seulement les boucles infinies", js.contains("iterations===Infinity"));
     T.ok("mise en pause", js.contains(".pause()"));

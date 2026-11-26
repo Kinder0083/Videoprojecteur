@@ -81,11 +81,14 @@ public final class KioskScript {
       "var all=[c&&c.shadowRoot?c.shadowRoot:document];roots(all[0],0,all);R=[];for(var k=0;k<all.length;k++){try{var l=all[k].getAnimations();",
       "for(var i=0;i<l.length;i++){if(inf(l[i])){R.push(all[k]);break;}}}catch(e){}}",
       "var dt=Date.now()-t0;if(dt>30)log('scan ms='+dt+(c?' carte':' page'));}",
-      "window.addEventListener('location-changed',function(){calmK=0;animUntil=Date.now()+BURST;});",
-      "function burst(ms){animUntil=Date.now()+(ms||BURST);if(Date.now()-lastScan>10000)scan();}",
+      "window.addEventListener('location-changed',function(){calmK=0;burst();});",
+      // durée fixe : une rafale en cours n'est pas prolongée par les touches suivantes
+      "function burst(ms){var n=Date.now();if(n<animUntil)return;animUntil=n+(ms||BURST);if(n-lastScan>10000)scan();}",
       // pose figée : chaque boucle à mi-parcours, là où points et électrons sont visibles
       "function snap(t){var d=t.duration;return ((0.5*d+(t.delay||0))%d+d)%d;}",
-      "function calm(){if(calmK<SCAN&&calmK%12===0)scan();calmK++;var on=Date.now()<animUntil,n=0;",
+      // carte figée : une seule vérification par seconde (nouvelles animations à figer)
+      "function calm(){var on=Date.now()<animUntil;if(!on&&calmK%12!==0){calmK++;return;}",
+      "if(calmK<SCAN&&calmK%12===0)scan();calmK++;var n=0;",
       "for(var k=0;k<R.length;k++){var l;try{l=R[k].getAnimations();}catch(e){continue;}",
       "for(var i=0;i<l.length;i++){var a=l[i];try{if(!inf(a))continue;n++;",
       "if(on){if(a.playState!=='paused')a.pause();a.currentTime=(a.currentTime||0)+CALM;a.__hyF=0;}",
