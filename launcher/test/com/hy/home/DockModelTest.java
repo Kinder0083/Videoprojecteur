@@ -39,7 +39,20 @@ public final class DockModelTest {
     T.eq("ajoutables", Arrays.asList("com.google.android.youtube.tv", "org.videolan.vlc"),
         DockModel.addable(launchables, dock));
     T.eq("ajoutables vide", new java.util.ArrayList<String>(), DockModel.addable(new java.util.ArrayList<String>(), dock));
-    T.ok("défaut non retirable", !DockModel.removable("com.netflix.mediaclient"));
-    T.ok("épinglé retirable", DockModel.removable("org.videolan.vlc"));
+    // Les 4 applis d'origine se retirent aussi (liste « masquées ») et reviennent à leur place via « + Ajouter »
+    String nf = "com.netflix.mediaclient", dp = "com.disney.disneyplus";
+    T.ok("défaut reconnu", DockModel.isDefault(nf) && !DockModel.isDefault("org.videolan.vlc"));
+    T.eq("masquage", nf, DockModel.hide("", nf));
+    T.eq("masquage idempotent", nf, DockModel.hide(nf, nf));
+    T.eq("seuls les défauts se masquent", "", DockModel.hide("", "org.videolan.vlc"));
+    T.eq("réaffichage", dp, DockModel.unhide(nf + "," + dp, nf));
+    T.eq("défaut masqué absent", Arrays.asList("com.amazon.amazonvideo.livingroom", "com.disney.disneyplus",
+        "com.hisilicon.explorer", "org.videolan.vlc"), DockModel.packages("org.videolan.vlc", nf));
+    T.eq("tout masqué", Arrays.asList("org.videolan.vlc"),
+        DockModel.packages("org.videolan.vlc", "com.netflix.mediaclient,com.amazon.amazonvideo.livingroom,com.disney.disneyplus,com.hisilicon.explorer"));
+    T.eq("masquées null", d, DockModel.packages(null, null));
+    T.eq("réaffiché à sa place", d, DockModel.packages("", DockModel.unhide(nf, nf)));
+    T.eq("défaut masqué ajoutable", Arrays.asList("com.google.android.youtube.tv", nf, "org.videolan.vlc"),
+        DockModel.addable(launchables, DockModel.packages("com.spotify.tv.android", nf)));
 }
 }

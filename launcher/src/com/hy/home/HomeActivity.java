@@ -43,6 +43,7 @@ public class HomeActivity extends Activity {
   static final String PREFS = "hy_home";
   static final String KEY_URL = "ha_url";
   static final String KEY_PINS = "pins";
+  static final String KEY_HIDDEN = "hidden";
   static final int BG = 0xFF0A0E1D;
   static final int FG = 0xFFF2F4FF;
   static final int DIM = 0xFFA3ABCF;
@@ -441,12 +442,12 @@ public class HomeActivity extends Activity {
     dock.removeAllViews();
     dock.setPadding(0, Math.round(s(6)), 0, Math.round(s(14)));
     firstTile = null;
-    List<String> pkgs = DockModel.visible(DockModel.packages(prefs().getString(KEY_PINS, "")), AppLauncher.launchableSet(this));
+    List<String> pkgs = DockModel.visible(dockPackages(), AppLauncher.launchableSet(this));
     for (String p : pkgs) {
       Drawable banner = AppLauncher.banner(this, p);
       View t = tile(AppLauncher.label(this, p), banner != null ? banner : AppLauncher.icon(this, p), banner != null, null);
       t.setOnClickListener(new UiActions.TileClick(this, UiActions.APP, p));
-      if (DockModel.removable(p)) t.setOnLongClickListener(new UiActions.TileLongClick(this, p));
+      t.setOnLongClickListener(new UiActions.TileLongClick(this, p));
       addTile(t);
     }
     View add = tile("Ajouter", null, false, "+");
@@ -510,7 +511,7 @@ public class HomeActivity extends Activity {
   }
 
   void showAddDialog() {
-    List<String> pkgs = DockModel.addable(AppLauncher.installedLaunchables(this), DockModel.packages(prefs().getString(KEY_PINS, "")));
+    List<String> pkgs = DockModel.addable(AppLauncher.installedLaunchables(this), dockPackages());
     AlertDialog.Builder b = new AlertDialog.Builder(this, DIALOG_THEME).setTitle("Ajouter une appli à la barre");
     if (pkgs.isEmpty()) b.setMessage("Aucune autre appli à ajouter.").setPositiveButton("OK", null);
     else {
@@ -521,8 +522,14 @@ public class HomeActivity extends Activity {
     b.show();
   }
 
+  List<String> dockPackages() {
+    return DockModel.packages(prefs().getString(KEY_PINS, ""), prefs().getString(KEY_HIDDEN, ""));
+  }
+
+  /** Appli d'origine : on la réaffiche à sa place ; autre appli : on l'épingle en fin de barre. */
   void pin(String pkg) {
-    prefs().edit().putString(KEY_PINS, DockModel.addPin(prefs().getString(KEY_PINS, ""), pkg)).apply();
+    if (DockModel.isDefault(pkg)) prefs().edit().putString(KEY_HIDDEN, DockModel.unhide(prefs().getString(KEY_HIDDEN, ""), pkg)).apply();
+    else prefs().edit().putString(KEY_PINS, DockModel.addPin(prefs().getString(KEY_PINS, ""), pkg)).apply();
     buildDock();
   }
 
@@ -533,8 +540,10 @@ public class HomeActivity extends Activity {
         .setNegativeButton("Annuler", null).show();
   }
 
+  /** Retire de la barre (n'effectue aucune désinstallation). */
   void unpin(String pkg) {
-    prefs().edit().putString(KEY_PINS, DockModel.removePin(prefs().getString(KEY_PINS, ""), pkg)).apply();
+    if (DockModel.isDefault(pkg)) prefs().edit().putString(KEY_HIDDEN, DockModel.hide(prefs().getString(KEY_HIDDEN, ""), pkg)).apply();
+    else prefs().edit().putString(KEY_PINS, DockModel.removePin(prefs().getString(KEY_PINS, ""), pkg)).apply();
     buildDock();
   }
 

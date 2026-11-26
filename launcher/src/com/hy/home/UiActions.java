@@ -21,12 +21,11 @@ final class UiActions {
     }
   }
 
-  /** Appui long sur une tuile épinglée : proposer de la retirer. */
+  /** Appui long sur une tuile d'appli : proposer de la retirer de la barre. */
   static final class TileLongClick implements View.OnLongClickListener {
     final HomeActivity a; final String pkg;
     TileLongClick(HomeActivity a, String pkg) { this.a = a; this.pkg = pkg; }
     @Override public boolean onLongClick(View v) {
-      if (!DockModel.removable(pkg)) return false;
       a.confirmRemove(pkg);
       return true;
     }
