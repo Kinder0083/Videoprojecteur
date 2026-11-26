@@ -21,10 +21,14 @@ public final class KioskScriptTest {
     T.ok("journal fit", js.contains("log('fit "));
     T.ok("réajusté après masquage de l'en-tête", js.contains("log('kiosk:ok');refit();"));
     // animations infinies (carte énergie) : pause + avance par pas, ~1 image/s au lieu de ~40
-    T.ok("pas d'animation 0,5 s", KioskScript.CALM_MS == 500);
+    T.ok("12 images par seconde", KioskScript.CALM_MS == 83);
+    T.ok("racines complètes toutes les 10 s", KioskScript.RESCAN_STEPS == 120);
     T.ok("animations listées par racine", js.contains("R[k].getAnimations()"));
     T.ok("shadow roots parcourus", js.contains("function roots(") && js.contains("out.push(s)"));
-    T.ok("racines rafraîchies toutes les 10 pas", js.contains("calmK%10===0"));
+    T.ok("racines rafraîchies toutes les 10 s", js.contains("var SCAN=" + KioskScript.RESCAN_STEPS + ";") && js.contains("calmK%SCAN===0"));
+    T.ok("recherche rapprochée au démarrage", js.contains("(calmK<SCAN&&calmK%12===0)"));
+    T.ok("recherche relancée après navigation", js.contains("addEventListener('location-changed',function(){calmK=0;})"));
+    T.ok("seules les racines animées sont suivies", js.contains("if(inf(l[i])){R.push(all[k]);break;}"));
     T.ok("seulement les boucles infinies", js.contains("iterations===Infinity"));
     T.ok("mise en pause", js.contains(".pause()"));
     T.ok("avance par pas", js.contains("currentTime=(a.currentTime||0)+CALM"));

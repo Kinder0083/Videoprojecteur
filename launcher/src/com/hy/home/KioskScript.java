@@ -14,9 +14,11 @@ public final class KioskScript {
   /**
    * Les animations en boucle (carte énergie : nuages, flux, pluie…) font redessiner la page
    * ~40 fois/s et chauffer le projecteur. On les met en pause et on les avance par pas de
-   * CALM_MS (2 pas/s) : le mouvement reste visible, le rendu tombe à ~2 images/s.
+   * CALM_MS (12 pas/s, mesuré ~75 % de charge contre ~208 % en libre) : mouvement presque fluide.
    */
-  static final int CALM_MS = 500;
+  static final int CALM_MS = 83;
+  /** Recherche complète des zones animées toutes les ~10 s (et chaque seconde au démarrage). */
+  static final int RESCAN_STEPS = 120;
 
   private KioskScript() {}
 
@@ -63,14 +65,18 @@ public final class KioskScript {
       "fitT.push(setTimeout(function(){fit(0);},700));fitT.push(setTimeout(function(){fit(0);},2500));fitT.push(setTimeout(function(){fit(0);},6000));}",
       "window.addEventListener('location-changed',refit);window.addEventListener('resize',refit);refit();",
       // (c'') animations infinies ralenties : pause + avance par pas (les transitions de l'UI HA ne sont pas touchées)
-      "var CALM=" + CALM_MS + ";var calmN=-1,calmK=0,R=[];",
+      "var CALM=" + CALM_MS + ";var SCAN=" + RESCAN_STEPS + ";var calmN=-1,calmK=0,R=[];",
       // document.getAnimations() ne voit pas l'intérieur des shadow roots : on les collecte
       "function roots(r,d,out){if(!r||d>14||!r.querySelectorAll)return;var all=r.querySelectorAll('*');",
       "for(var i=0;i<all.length;i++){var s=all[i].shadowRoot;if(s){out.push(s);roots(s,d+1,out);}}}",
-      "function calm(){if(calmK%10===0){R=[document];roots(document,0,R);}calmK++;var n=0;",
+      "function inf(a){var t=a.effect&&a.effect.getTiming?a.effect.getTiming():null;return !!t&&t.iterations===Infinity;}",
+      // seules les racines qui portent une animation en boucle sont suivies à chaque pas
+      "function scan(){var all=[document];roots(document,0,all);R=[];for(var k=0;k<all.length;k++){try{var l=all[k].getAnimations();",
+      "for(var i=0;i<l.length;i++){if(inf(l[i])){R.push(all[k]);break;}}}catch(e){}}}",
+      "window.addEventListener('location-changed',function(){calmK=0;});",
+      "function calm(){if(calmK%SCAN===0||(calmK<SCAN&&calmK%12===0))scan();calmK++;var n=0;",
       "for(var k=0;k<R.length;k++){var l;try{l=R[k].getAnimations();}catch(e){continue;}",
-      "for(var i=0;i<l.length;i++){var a=l[i];try{var t=a.effect&&a.effect.getTiming?a.effect.getTiming():null;",
-      "if(!t||!(t.iterations===Infinity))continue;if(a.playState!=='paused')a.pause();a.currentTime=(a.currentTime||0)+CALM;n++;}catch(e){}}}",
+      "for(var i=0;i<l.length;i++){var a=l[i];try{if(!inf(a))continue;if(a.playState!=='paused')a.pause();a.currentTime=(a.currentTime||0)+CALM;n++;}catch(e){}}}",
       "if(n!==calmN){calmN=n;log('calm n='+n+' racines='+R.length);}}",
       "setInterval(calm,CALM);",
       // (d) API appelée par l'app
