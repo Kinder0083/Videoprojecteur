@@ -66,3 +66,4 @@ Point 3 (launcher, commit 3b06600, APK dbfb895c installé) : WebView figée hors
 - Ruling (mon choix) : recherche des animations limitée à energy-flow-card, plus de scan périodique de toute la page (cause probable du gel) ; PerformanceObserver longtask >150 ms journalisé — coût si faux : une autre carte animée tournerait à pleine vitesse.
 - Mesure après (10:19) : 2 images/5 s, renderer 13,8 %, launcher 2,6 % ; longtasks uniquement au chargement de la page (164-343 ms), aucune ensuite ; scan < 30 ms.
 - Rafale à durée fixe : 10 s à partir de la première touche ; les touches suivantes ne la prolongent pas tant qu'elle n'est pas finie (demande utilisateur). Une fois figée, la carte n'est vérifiée qu'une fois par seconde (1 tick sur 12) au lieu de 12×/s. APK 0412aa598e28d0de installé. Tests 104/104.
+- Validé par l'utilisateur sur l'appareil : la carte se fige bien 10 s après la première touche.
