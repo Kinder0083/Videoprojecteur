@@ -17,8 +17,12 @@ public final class KioskScript {
    * CALM_MS (12 pas/s, mesuré ~75 % de charge contre ~208 % en libre) : mouvement presque fluide.
    */
   static final int CALM_MS = 83;
-  /** Recherche complète des zones animées toutes les ~10 s (et chaque seconde au démarrage). */
+  /** Pendant les 120 premiers pas (~10 s), recherche des zones animées chaque seconde. */
   static final int RESCAN_STEPS = 120;
+  /** Rafale d'animation (arrivée sur l'écran, touche, onglet) avant que la carte se fige. */
+  static final int BURST_MS = 10000;
+  /** Appel de la rafale depuis l'app. */
+  static final String BURST_CALL = "window.__hy&&window.__hy.burst&&window.__hy.burst(" + BURST_MS + ")";
 
   private KioskScript() {}
 
@@ -44,7 +48,7 @@ public final class KioskScript {
       "st.textContent='.header{display:none!important}#view,hui-view-container{padding-top:0!important;margin-top:0!important;min-height:100vh!important}';",
       "hr.shadowRoot.appendChild(st);}hr.style.setProperty('--header-height','0px');return true;}",
       "var tries=0,timer=null;function retry(){tries=0;if(timer)clearInterval(timer);",
-      "timer=setInterval(function(){tries++;if(hideHeader()){clearInterval(timer);log('kiosk:ok');refit();}else if(tries>=40){clearInterval(timer);}},500);}",
+      "timer=setInterval(function(){tries++;if(hideHeader()){clearInterval(timer);log('kiosk:ok');refit();burst();}else if(tries>=40){clearInterval(timer);}},500);}",
       "window.addEventListener('location-changed',retry);retry();",
       // (c) couleurs du launcher et zoom
       "function theme(){var r=document.documentElement;r.style.setProperty('--primary-background-color','#0a0e1d');",
@@ -65,23 +69,36 @@ public final class KioskScript {
       "fitT.push(setTimeout(function(){fit(0);},700));fitT.push(setTimeout(function(){fit(0);},2500));fitT.push(setTimeout(function(){fit(0);},6000));}",
       "window.addEventListener('location-changed',refit);window.addEventListener('resize',refit);refit();",
       // (c'') animations infinies ralenties : pause + avance par pas (les transitions de l'UI HA ne sont pas touchées)
-      "var CALM=" + CALM_MS + ";var SCAN=" + RESCAN_STEPS + ";var calmN=-1,calmK=0,R=[];",
+      "var CALM=" + CALM_MS + ";var SCAN=" + RESCAN_STEPS + ";var BURST=" + BURST_MS + ";",
+      "var calmN=-1,calmK=0,R=[],animUntil=Date.now()+BURST,lastScan=0;",
       // document.getAnimations() ne voit pas l'intérieur des shadow roots : on les collecte
       "function roots(r,d,out){if(!r||d>14||!r.querySelectorAll)return;var all=r.querySelectorAll('*');",
       "for(var i=0;i<all.length;i++){var s=all[i].shadowRoot;if(s){out.push(s);roots(s,d+1,out);}}}",
       "function inf(a){var t=a.effect&&a.effect.getTiming?a.effect.getTiming():null;return !!t&&t.iterations===Infinity;}",
+      // recherche limitée à la carte énergie (repli : toute la page), durée journalisée ;
       // seules les racines qui portent une animation en boucle sont suivies à chaque pas
-      "function scan(){var all=[document];roots(document,0,all);R=[];for(var k=0;k<all.length;k++){try{var l=all[k].getAnimations();",
-      "for(var i=0;i<l.length;i++){if(inf(l[i])){R.push(all[k]);break;}}}catch(e){}}}",
-      "window.addEventListener('location-changed',function(){calmK=0;});",
-      "function calm(){if(calmK%SCAN===0||(calmK<SCAN&&calmK%12===0))scan();calmK++;var n=0;",
+      "function scan(){var t0=Date.now();lastScan=t0;var c=deep(document,'energy-flow-card',0);",
+      "var all=[c&&c.shadowRoot?c.shadowRoot:document];roots(all[0],0,all);R=[];for(var k=0;k<all.length;k++){try{var l=all[k].getAnimations();",
+      "for(var i=0;i<l.length;i++){if(inf(l[i])){R.push(all[k]);break;}}}catch(e){}}",
+      "var dt=Date.now()-t0;if(dt>30)log('scan ms='+dt+(c?' carte':' page'));}",
+      "window.addEventListener('location-changed',function(){calmK=0;animUntil=Date.now()+BURST;});",
+      "function burst(ms){animUntil=Date.now()+(ms||BURST);if(Date.now()-lastScan>10000)scan();}",
+      // pose figée : chaque boucle à mi-parcours, là où points et électrons sont visibles
+      "function snap(t){var d=t.duration;return ((0.5*d+(t.delay||0))%d+d)%d;}",
+      "function calm(){if(calmK<SCAN&&calmK%12===0)scan();calmK++;var on=Date.now()<animUntil,n=0;",
       "for(var k=0;k<R.length;k++){var l;try{l=R[k].getAnimations();}catch(e){continue;}",
-      "for(var i=0;i<l.length;i++){var a=l[i];try{if(!inf(a))continue;if(a.playState!=='paused')a.pause();a.currentTime=(a.currentTime||0)+CALM;n++;}catch(e){}}}",
+      "for(var i=0;i<l.length;i++){var a=l[i];try{if(!inf(a))continue;n++;",
+      "if(on){if(a.playState!=='paused')a.pause();a.currentTime=(a.currentTime||0)+CALM;a.__hyF=0;}",
+      "else if(!a.__hyF||a.playState!=='paused'){var t=a.effect.getTiming();a.pause();a.currentTime=snap(t);a.__hyF=1;}",
+      "}catch(e){}}}",
       "if(n!==calmN){calmN=n;log('calm n='+n+' racines='+R.length);}}",
+      // blocages de plus de 150 ms journalisés (diagnostic des gels)
+      "try{new PerformanceObserver(function(o){o.getEntries().forEach(function(e){if(e.duration>150)log('long ms='+Math.round(e.duration));});}).observe({entryTypes:['longtask']});}catch(e){}",
       "setInterval(calm,CALM);",
       // (d) API appelée par l'app
       "function hass(){var ha=document.querySelector('home-assistant');return ha&&ha.hass?ha.hass:null;}",
       "window.__hy={",
+      "burst:function(ms){burst(ms);},",
       "nav:function(p){history.pushState(null,'',p);window.dispatchEvent(new CustomEvent('location-changed',{detail:{replace:false}}));},",
       "press:function(id){var h=hass();if(!h){try{" + b + ".onPress(id,false);}catch(e){}return;}",
       "h.callService('input_button','press',{entity_id:id}).then(function(){try{" + b + ".onPress(id,true);}catch(e){}},",

@@ -61,3 +61,7 @@ Point 3 (launcher, commit 3b06600, APK dbfb895c installé) : WebView figée hors
 - Recherche des racines ciblée : seules les racines animées suivies, recherche complète /10 s, chaque seconde les 10 premières s et après navigation. Tests 95/95, vérifié dans Chromium.
 - Incident : relance du launcher (am start) à 09:33 pendant que l'utilisateur regardait Netflix → film probablement interrompu. Règle : vérifier topResumedActivity avant tout am start.
 - Observation : Netflix seul ~105 % CPU et ~70 °C (avec dex2oat de l'installation).
+- 26/11 : 12 i/s permanent mesuré sur le vrai launcher ~125 % (renderer 80 %), 61-62 °C ; gel ~1 s signalé par l'utilisateur ; Netflix moins fluide (dex2oat post-installation à 98 % + page HA gardée en arrière-plan ~180 Mo).
+- Ruling (choix utilisateur) : rafale 12 i/s pendant 10 s (chargement, retour écran, réveil, touche, onglet) puis carte figée à mi-parcours (points visibles) ; page HA conservée en arrière-plan — coût si faux : pas de mouvement hors rafale.
+- Ruling (mon choix) : recherche des animations limitée à energy-flow-card, plus de scan périodique de toute la page (cause probable du gel) ; PerformanceObserver longtask >150 ms journalisé — coût si faux : une autre carte animée tournerait à pleine vitesse.
+- Mesure après (10:19) : 2 images/5 s, renderer 13,8 %, launcher 2,6 % ; longtasks uniquement au chargement de la page (164-343 ms), aucune ensuite ; scan < 30 ms.

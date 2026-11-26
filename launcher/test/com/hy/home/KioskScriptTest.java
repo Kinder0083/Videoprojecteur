@@ -25,9 +25,17 @@ public final class KioskScriptTest {
     T.ok("racines complètes toutes les 10 s", KioskScript.RESCAN_STEPS == 120);
     T.ok("animations listées par racine", js.contains("R[k].getAnimations()"));
     T.ok("shadow roots parcourus", js.contains("function roots(") && js.contains("out.push(s)"));
-    T.ok("racines rafraîchies toutes les 10 s", js.contains("var SCAN=" + KioskScript.RESCAN_STEPS + ";") && js.contains("calmK%SCAN===0"));
+    T.ok("plus de recherche périodique de toute la page", js.contains("var SCAN=" + KioskScript.RESCAN_STEPS + ";") && !js.contains("calmK%SCAN===0"));
+    // rafale de 10 s à 12 i/s puis carte figée à mi-parcours
+    T.ok("rafale de 10 s", KioskScript.BURST_MS == 10000 && js.contains("var BURST=10000;"));
+    T.ok("rafale appelable par l'app", js.contains("burst:function(ms){burst(ms);}"));
+    T.ok("appel de rafale côté app", KioskScript.BURST_CALL.equals("window.__hy&&window.__hy.burst&&window.__hy.burst(10000)"));
+    T.ok("rafale au chargement", js.contains("log('kiosk:ok');refit();burst();"));
+    T.ok("figée à mi-parcours", js.contains("a.currentTime=snap(t)") && js.contains("0.5*d"));
+    T.ok("recherche limitée à la carte énergie", js.contains("deep(document,'energy-flow-card',0)"));
+    T.ok("blocages mesurés", js.contains("PerformanceObserver") && js.contains("'longtask'"));
     T.ok("recherche rapprochée au démarrage", js.contains("(calmK<SCAN&&calmK%12===0)"));
-    T.ok("recherche relancée après navigation", js.contains("addEventListener('location-changed',function(){calmK=0;})"));
+    T.ok("recherche relancée après navigation", js.contains("addEventListener('location-changed',function(){calmK=0;animUntil="));
     T.ok("seules les racines animées sont suivies", js.contains("if(inf(l[i])){R.push(all[k]);break;}"));
     T.ok("seulement les boucles infinies", js.contains("iterations===Infinity"));
     T.ok("mise en pause", js.contains(".pause()"));

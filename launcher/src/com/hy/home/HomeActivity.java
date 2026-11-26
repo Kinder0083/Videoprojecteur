@@ -166,6 +166,12 @@ public class HomeActivity extends Activity {
     sleepView.setVisibility(View.GONE);
     resumeWeb();
     if (sleeping) { sleeping = false; Log.i(TAG, "réveil"); }
+    burst();
+  }
+
+  /** Carte énergie animée quelques secondes (arrivée sur l'écran, réveil, touche), puis figée. */
+  void burst() {
+    if (web != null && pageReady && !webPaused) web.evaluateJavascript(KioskScript.BURST_CALL, null);
   }
 
   /** Taille de la maquette (écran de 1280 px de large) convertie en pixels réels. */
@@ -580,6 +586,7 @@ public class HomeActivity extends Activity {
   @Override public boolean dispatchKeyEvent(KeyEvent e) {
     lastInputMs = SystemClock.uptimeMillis();
     if (sleeping) { if (e.getAction() == KeyEvent.ACTION_UP) wake(); return true; } // la touche qui réveille ne fait rien d'autre
+    if (e.getAction() == KeyEvent.ACTION_DOWN) burst();
     if (e.getAction() == KeyEvent.ACTION_DOWN && getCurrentFocus() == null && isDpad(e.getKeyCode())) {
       focusFirstTile();
       return true;
